@@ -6,9 +6,7 @@
 
 A personal "Sales Development Representative" agent for job searching. It
 finds leads (people worth reaching out to — recruiters, hiring managers,
-warm contacts) by mining email and LinkedIn, scores them against the
-user's resume and preferences, and surfaces recommended actions through
-one or more chat interfaces.
+warm contacts) by mining LinkedIn, company websites, etc. and identifies potential user's resume, preferences, jobs they might have applied to, and communicates with the user through one or more chat interfaces.
 
 This is a single-user personal tool, not a multi-tenant product. Optimize
 for "works reliably for one person" over generality.
