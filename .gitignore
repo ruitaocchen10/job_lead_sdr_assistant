@@ -1,1 +1,11 @@
 /docs
+
+# python
+.venv/
+__pycache__/
+*.pyc
+
+# secrets — never commit these
+credentials.json
+token.json
+.env

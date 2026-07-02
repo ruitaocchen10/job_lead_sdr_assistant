@@ -8,7 +8,7 @@ A "Sales Development Representative" agent for job searching. It
 finds leads (people worth reaching out to — recruiters, hiring managers,
 warm contacts) by mining LinkedIn, company websites, etc. It then identifies potential connections, leads, and opportunities using the user's resume, preferences, jobs they might have applied to, and communicates with the user through one or more chat interfaces.
 
-This is meant to have flexibility and customizability for users to be able to choose their own interface layers, database layers, etc.
+This is self-hosted — users clone the repo, fill in their credentials, and run `docker-compose up`. Each user runs their own isolated instance. The agent is designed for flexibility so users can choose their own interface layers, database layers, and context sources.
 
 ## Architecture at a glance
 
@@ -30,19 +30,41 @@ Full design rationale lives in `docs/architecture.md` — read it before making 
 - **Task queue**: Celery + Redis (long-running agent jobs run async)
 - **Database adapter**: Notion API (first implementation; abstract interface supports others)
 - **Interface adapter**: Telegram via python-telegram-bot (first implementation; abstract interface supports others)
-- **Gmail ingestion**: Gmail API + Cloud Pub/Sub push notifications (not polling)
-- **LinkedIn ingestion**: Manual CSV export
-- **Deploy**: Cloud Run (auto-scales)
+- **Gmail**: Gmail API, queried on-demand via tool functions — no ingestion pipeline or storage
+- **LinkedIn**: Manual CSV export
+- **Deploy**: Docker Compose (self-hosted)
 
 ## Trigger modes
 
 Agent runs are initiated by triggers, which users can configure:
 
 - **Reactive**: Agent responds when the user messages it via the interface
-- **Webhook**: Agent reacts to external events (e.g. Gmail push notification)
-- **Scheduled**: Agent runs on a cron schedule (e.g. every morning)
+- **Scheduled**: Agent runs on a cron schedule (e.g. every morning, checks Gmail and surfaces leads)
 
 Multiple triggers can be active simultaneously.
+
+## Project structure
+
+```
+job_lead_sdr_assistant/
+├── docker-compose.yml          # user entry point
+├── Dockerfile
+├── .env.example                # credentials template
+├── config.yaml.example         # agent behavior config
+├── requirements.txt
+├── scripts/
+│   └── setup_gmail.py          # one-time Gmail OAuth setup
+├── docs/
+└── src/
+    ├── api/main.py             # FastAPI app
+    ├── agent/                  # runner + prompts
+    ├── adapters/               # database/ and interface/ ABCs + implementations
+    ├── context/                # gmail.py, linkedin.py, resume.py
+    ├── triggers/               # message.py, schedule.py
+    └── tasks.py                # Celery tasks
+```
+
+Full structure and rationale in `docs/architecture.md`.
 
 ## Extensibility
 

@@ -1,0 +1,13 @@
+google-auth
+google-auth-oauthlib
+google-api-python-client
+google-auth-httplib2
+
+litellm
+fastapi
+uvicorn
+celery
+redis
+python-telegram-bot
+notion-client
+pyyaml
