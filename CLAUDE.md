@@ -15,8 +15,8 @@ This is self-hosted — users clone the repo, fill in their credentials, and run
 Four layers, data flows bottom to top:
 
 ```
-Interface layer → Telegram bot (pluggable: Slack, Discord, web UI)
-Agent layer     → LiteLLM-powered reasoning (model-agnostic)
+Interface layer → Telegram bot polling (pluggable: Slack, Discord, web UI via webhooks)
+Agent layer     → PydanticAI (agent loop, tools, typed outputs) + LiteLLM (model routing)
 Database layer  → Notion (pluggable: Supabase, Google Sheets)
 Context layer   → Gmail, LinkedIn CSV, resume
 ```
@@ -25,11 +25,12 @@ Full design rationale lives in `docs/architecture.md` — read it before making 
 
 ## Tech stack
 
-- **Backend**: Python + FastAPI
-- **Agent**: LiteLLM (model-agnostic wrapper — Claude, GPT-4, Gemini, etc.)
-- **Task queue**: Celery + Redis (long-running agent jobs run async)
+- **Backend**: Python + FastAPI (for future webhook-based interfaces; not used by Telegram)
+- **Agent**: PydanticAI (agent loop, tool registration, dependency injection, typed outputs)
+- **Model routing**: LiteLLM (model-agnostic wrapper — Claude, GPT-4, Gemini, etc.; configured via a single string in config.yaml)
+- **Async execution**: APScheduler (scheduled triggers); Telegram polling loop handles reactive triggers
 - **Database adapter**: Notion API (first implementation; abstract interface supports others)
-- **Interface adapter**: Telegram via python-telegram-bot (first implementation; abstract interface supports others)
+- **Interface adapter**: Telegram via python-telegram-bot in polling mode — no public URL required, runs fully locally
 - **Gmail**: Gmail API, queried on-demand via tool functions — no ingestion pipeline or storage
 - **LinkedIn**: Manual CSV export
 - **Deploy**: Docker Compose (self-hosted)
@@ -57,11 +58,11 @@ job_lead_sdr_assistant/
 ├── docs/
 └── src/
     ├── api/main.py             # FastAPI app
-    ├── agent/                  # runner + prompts
+    ├── agent/                  # PydanticAI agent definition, tools, prompts
     ├── adapters/               # database/ and interface/ ABCs + implementations
     ├── context/                # gmail.py, linkedin.py, resume.py
     ├── triggers/               # message.py, schedule.py
-    └── tasks.py                # Celery tasks
+    └── scheduler.py            # APScheduler setup for scheduled triggers
 ```
 
 Full structure and rationale in `docs/architecture.md`.
