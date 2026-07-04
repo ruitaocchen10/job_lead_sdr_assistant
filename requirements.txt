@@ -4,6 +4,7 @@ google-api-python-client
 google-auth-httplib2
 
 pydantic-ai
+python-dotenv
 litellm
 fastapi
 uvicorn
