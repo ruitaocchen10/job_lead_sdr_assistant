@@ -9,6 +9,7 @@ __pycache__/
 credentials.json
 token.json
 .env
+config.yaml
 
 # personal data — never commit these
 data/linkedin_connections.csv
