@@ -32,7 +32,8 @@ Full design rationale lives in `docs/architecture.md` — read it before making 
 - **Database adapter**: Notion API (first implementation; abstract interface supports others)
 - **Interface adapter**: Telegram via python-telegram-bot in polling mode — no public URL required, runs fully locally
 - **Gmail**: Gmail API, queried on-demand via tool functions — no ingestion pipeline or storage
-- **LinkedIn**: Manual CSV export
+- **LinkedIn**: Manual CSV export (scraping is not viable — LinkedIn is a JS SPA behind auth; their ToS prohibits it and accounts risk suspension)
+- **Lead enrichment**: Apollo.io API (find contacts by company/role), Hunter.io (email finding by domain)
 - **Deploy**: Docker Compose (self-hosted)
 
 ## Trigger modes
@@ -56,6 +57,10 @@ job_lead_sdr_assistant/
 ├── scripts/
 │   └── setup_gmail.py          # one-time Gmail OAuth setup
 ├── docs/
+├── context/
+│   └── profile.md              # user's resume summary, target roles, preferences, tone (static)
+├── data/
+│   └── linkedin_connections.csv  # raw LinkedIn export — refresh by re-exporting from LinkedIn
 └── src/
     ├── api/main.py             # FastAPI app
     ├── agent/                  # PydanticAI agent definition, tools, prompts
@@ -66,6 +71,44 @@ job_lead_sdr_assistant/
 ```
 
 Full structure and rationale in `docs/architecture.md`.
+
+## Agent tools
+
+The agent is a **single PydanticAI agent with multiple tools** — not a multi-agent system. Multi-agent adds orchestration complexity without benefit at this scale; the pipeline is sequential, not parallel. Build and test each tool independently before wiring to the agent:
+
+| Tool            | Purpose                                                                     |
+| --------------- | --------------------------------------------------------------------------- |
+| `search_jobs()` | Query job boards for listings (Indeed, Glassdoor, LinkedIn Jobs public)     |
+| `find_leads()`  | Apollo.io API — given company → return contacts (recruiter, hiring manager) |
+| `read_gmail()`  | Search/read emails on demand via Gmail API                                  |
+| `draft_email()` | Compose and save to Gmail drafts                                            |
+| `get_context()` | Load user profile from `context/profile.md`                                 |
+| `save_lead()`   | Write lead to Notion                                                        |
+| `list_leads()`  | Read leads from Notion                                                      |
+
+## Lead pipeline
+
+```
+Job board (company is hiring)
+    → Apollo API (find recruiter/hiring manager at that company)
+    → LinkedIn connections CSV (check for warm contacts at that company)
+    → Draft outreach email
+```
+
+LinkedIn profile scraping is not used. Google search (`site:linkedin.com/in`) can surface public profile snippets when needed.
+
+## Context memory model
+
+Context is split by how often it changes — do not re-read all sources on every agent run:
+
+| Type        | Storage                          | Examples                                                          | Load strategy                                    |
+| ----------- | -------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------ |
+| Static      | `context/profile.md`             | Resume summary, target roles, preferred tone, company preferences | Loaded once at startup into system prompt        |
+| Semi-static | `data/linkedin_connections.csv`  | Connections (name, company, title) — raw LinkedIn export          | Tool call on demand; refresh by re-exporting CSV |
+| Dynamic     | Fetched on demand via tools      | New emails, fresh job listings, Apollo contacts                   | Tool call, per task                              |
+| Accumulated | Notion database                  | Lead notes, application status, follow-up history                 | Tool call, read/write per task                   |
+
+`context/profile.md` is the only context loaded into the system prompt — it's the only source small enough and stable enough to justify that. Everything else is behind tools and fetched only when the task requires it.
 
 ## Extensibility
 
