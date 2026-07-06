@@ -1,1 +1,5 @@
 model: anthropic:claude-sonnet-4-6
+
+database:
+  adapter: notion
+  database_id: your-notion-database-id-here
